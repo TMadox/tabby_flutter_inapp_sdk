@@ -10,7 +10,7 @@ class CreateSessionAction extends ApiRequestAction<CheckoutSession> {
   RequestMethod get method => RequestMethod.GET;
 
   @override
-  String get path => '${host}api/v2/checkout';
+  String get path => 'api/v2/checkout';
 
   @override
   ResponseBuilder<CheckoutSession> get responseBuilder => (response) => CheckoutSession.fromJson(response);

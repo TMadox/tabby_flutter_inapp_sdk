@@ -53,6 +53,7 @@ class TabbySDK implements TabbyWithRemoteDataSource {
     _host = environment.host;
     _analyticsHost = environment.analyticsHost;
     ApiRequestOptions.instance?.config(
+      baseUrl: _host,
       tokenType: ApiRequestOptions.bearer,
       enableLog: true,
       connectTimeout: const Duration(seconds: 30),
