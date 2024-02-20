@@ -17,6 +17,7 @@ class DioInterceptor extends Interceptor {
 
   @override
   Future onError(DioException err, ErrorInterceptorHandler handler) async {
+    print('ERROR Response[${err.toString()}] => FULL URL: ${err.requestOptions.uri}');
     print('ERROR[${err.response?.statusCode}] => PATH: ${err.requestOptions.path}');
     super.onError(err, handler);
   }
