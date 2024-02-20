@@ -1,7 +1,9 @@
 import 'dart:convert';
 
+import 'package:api_request/api_request.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:tabby_flutter_inapp_sdk/src/internal/create_session_action.dart';
 import 'package:tabby_flutter_inapp_sdk/src/internal/headers.dart';
 import 'package:tabby_flutter_inapp_sdk/tabby_flutter_inapp_sdk.dart';
 import 'package:uuid/uuid.dart';
@@ -50,6 +52,11 @@ class TabbySDK implements TabbyWithRemoteDataSource {
     _apiKey = withApiKey;
     _host = environment.host;
     _analyticsHost = environment.analyticsHost;
+    ApiRequestOptions.instance?.config(
+      tokenType: ApiRequestOptions.bearer,
+      enableLog: true,
+      connectTimeout: const Duration(seconds: 30),
+    );
   }
 
   void checkSetup() {
@@ -63,43 +70,30 @@ class TabbySDK implements TabbyWithRemoteDataSource {
   @override
   Future<TabbySession> createSession(TabbyCheckoutPayload payload) async {
     checkSetup();
-    final response = await http.post(
-      Uri.parse('${_host}api/v2/checkout'),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'X-SDK-Version': getVersionHeader(),
-        'Authorization': 'Bearer $_apiKey',
-      },
-      body: jsonEncode(payload.toJson()),
+    final checkoutSession = await CreateSessionAction(api: _apiKey, host: _host)
+        .withHeaders({
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-SDK-Version': getVersionHeader(),
+          'Authorization': 'Bearer $_apiKey',
+        })
+        .execute()
+        .then<CheckoutSession>(
+          (value) => value!.fold<CheckoutSession>(
+            (error) => throw Exception(error?.message ?? error?.error),
+            (response) => response,
+          ),
+        );
+    final installmentsPlan = checkoutSession.configuration.availableProducts.installments?.first;
+    final availableProducts = TabbySessionAvailableProducts(
+      installments: installmentsPlan != null ? TabbyProduct(type: TabbyPurchaseType.installments, webUrl: installmentsPlan.webUrl) : null,
     );
-
-    debugPrint('session create status: ${response.statusCode}');
-    if (response.statusCode == 200) {
-      final checkoutSession =
-          CheckoutSession.fromJson(jsonDecode(response.body));
-
-      final installmentsPlan =
-          checkoutSession.configuration.availableProducts.installments?.first;
-
-      final availableProducts = TabbySessionAvailableProducts(
-        installments: installmentsPlan != null
-            ? TabbyProduct(
-                type: TabbyPurchaseType.installments,
-                webUrl: installmentsPlan.webUrl)
-            : null,
-      );
-
-      final tabbyCheckoutSession = TabbySession(
-        sessionId: checkoutSession.id,
-        paymentId: checkoutSession.payment.id,
-        availableProducts: availableProducts,
-      );
-      return tabbyCheckoutSession;
-    } else {
-      debugPrint(response.body);
-      throw ServerException();
-    }
+    final tabbyCheckoutSession = TabbySession(
+      sessionId: checkoutSession.id,
+      paymentId: checkoutSession.payment.id,
+      availableProducts: availableProducts,
+    );
+    return tabbyCheckoutSession;
   }
 
   @override

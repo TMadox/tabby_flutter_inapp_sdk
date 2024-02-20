@@ -9,21 +9,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  # Remote API
-  http: ^1.0.0
-
-  # Webview
   flutter_inappwebview: ^5.7.1
-
-  # UUID
+  http: ^1.0.0
+  api_request: ^1.0.9
   uuid: ^4.0.0
 
 dev_dependencies:
-  flutter_test:
-    sdk: flutter
 
   flutter_lints: ^2.0.0
+  flutter_test:
+    sdk: flutter
   test: ^1.21.1
 flutter:
   assets:
