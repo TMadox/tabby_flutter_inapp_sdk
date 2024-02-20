@@ -11,7 +11,8 @@ dependencies:
     sdk: flutter
   flutter_inappwebview: ^5.7.1
   http: ^1.0.0
-  api_request: ^1.0.9
+
+  dio: ^5.4.1
   uuid: ^4.0.0
 
 dev_dependencies:

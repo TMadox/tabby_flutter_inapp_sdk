@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:api_request/api_request.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:tabby_flutter_inapp_sdk/src/internal/create_session_action.dart';
+import 'package:tabby_flutter_inapp_sdk/src/internal/dio_interceptor.dart';
 import 'package:tabby_flutter_inapp_sdk/src/internal/headers.dart';
 import 'package:tabby_flutter_inapp_sdk/tabby_flutter_inapp_sdk.dart';
 import 'package:uuid/uuid.dart';
@@ -40,6 +40,7 @@ class TabbySDK implements TabbyWithRemoteDataSource {
   late final String _apiKey;
   late final String _host;
   late final String _analyticsHost;
+  late final Dio _dio;
 
   @override
   void setup({
@@ -52,12 +53,18 @@ class TabbySDK implements TabbyWithRemoteDataSource {
     _apiKey = withApiKey;
     _host = environment.host;
     _analyticsHost = environment.analyticsHost;
-    ApiRequestOptions.instance?.config(
-      baseUrl: _host,
-      tokenType: ApiRequestOptions.bearer,
-      enableLog: true,
-      connectTimeout: const Duration(seconds: 30),
+    _dio = Dio(
+      BaseOptions(
+        baseUrl: _host,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-SDK-Version': getVersionHeader(),
+          'Authorization': 'Bearer $_apiKey',
+        },
+      ),
     );
+    _dio.interceptors.add(DioInterceptor());
   }
 
   void checkSetup() {
@@ -71,20 +78,8 @@ class TabbySDK implements TabbyWithRemoteDataSource {
   @override
   Future<TabbySession> createSession(TabbyCheckoutPayload payload) async {
     checkSetup();
-    final checkoutSession = await CreateSessionAction(api: _apiKey, host: _host)
-        .withHeaders({
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'X-SDK-Version': getVersionHeader(),
-          'Authorization': 'Bearer $_apiKey',
-        })
-        .execute()
-        .then<CheckoutSession>(
-          (value) => value!.fold<CheckoutSession>(
-            (error) => throw Exception(error?.message ?? error?.error),
-            (response) => response,
-          ),
-        );
+    final response = await _dio.get('/api/v2/checkout');
+    final checkoutSession = CheckoutSession.fromJson(response.data);
     final installmentsPlan = checkoutSession.configuration.availableProducts.installments?.first;
     final availableProducts = TabbySessionAvailableProducts(
       installments: installmentsPlan != null ? TabbyProduct(type: TabbyPurchaseType.installments, webUrl: installmentsPlan.webUrl) : null,
